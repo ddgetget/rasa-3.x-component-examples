@@ -154,7 +154,8 @@ class GraphComponent(ABC):
 
 
 # 参考链接
-1. [rasa-3.x-component-examples](https://github.com/RasaHQ/rasa-3.x-component-examples)
-2. [rasa](https://github.com/RasaHQ/rasa)
+1. [github-rasa-3.x-component-examples](https://github.com/RasaHQ/rasa-3.x-component-examples)
+2. [github-rasa](https://github.com/RasaHQ/rasa)
 3. [rasa-page](https://rasa.com/)
 4. [custom-graph-components](https://rasa.com/docs/rasa/custom-graph-components)
+5. [github-bpemb](https://github.com/bheinzerling/bpemb)

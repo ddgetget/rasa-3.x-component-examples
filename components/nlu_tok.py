@@ -53,7 +53,8 @@ class AnotherWhitespaceTokenizer(Tokenizer):
         # 分词针对字母的处理
         if self.only_alphanum:
             # 如果仅仅需要字母
-            return "".join([c for c in s if ((c == " ") or str.isalnum(c))])  # 针对每一个字母进行筛选，针对是空格和字母的直接拼接
+            return "".join([c for c in s if ((c == " ") or str.isalnum(c))])
+            # 针对每一个字母进行筛选，针对是空格和字母的直接拼接
         return s
 
     @classmethod
@@ -82,4 +83,5 @@ class AnotherWhitespaceTokenizer(Tokenizer):
         tokens = self._convert_words_to_tokens(words, text)
         # 将单词列表转换成token，通过words里面每一个word去索引text，进而获得每个单词索引，即为单词对应的ID，重复的看第一个，这里是列表形式，里面每一个是Token类型
 
-        return self._apply_token_pattern(tokens)  # 将令牌模式应用于给定的令牌。对上面的重新写了一遍，将所有的token排成一列，并记录了每一恶搞token的begin和end
+        return self._apply_token_pattern(tokens)
+        # 将令牌模式应用于给定的令牌。对上面的重新写了一遍，将所有的token排成一列，并记录了每一恶搞token的begin和end
