@@ -98,7 +98,25 @@ class LogisticRegressionClassifier(IntentClassifier, GraphComponent):
         model_storage: ModelStorage,
         resource: Resource,
     ) -> None:
+        """
+        node_storage = LocalModelStorage(pathlib.Path(tmpdir))
+        node_resource = Resource("sparse_feat")
+        context = ExecutionContext(node_storage, node_resource)
+
+        return LogisticRegressionClassifier(
+            config=LogisticRegressionClassifier.get_default_config(),
+            name=context.node_name,
+            resource=node_resource,
+            model_storage=node_storage,
+        )
+        :param config:
+        :param name: 节点的名称
+        :param model_storage: 节点的存储后端
+        :param resource: 节点的持久化
+        """
         self.name = name
+
+        # 真正的逻辑回归模型
         self.clf = LogisticRegression(
             solver=config["solver"],
             max_iter=config["max_iter"],
@@ -106,21 +124,23 @@ class LogisticRegressionClassifier(IntentClassifier, GraphComponent):
         )
 
         # We need to use these later when saving the trained component.
+        # 我们需要稍后在保存经过训练的组件时使用这些。
         self._model_storage = model_storage
         self._resource = resource
 
     def _create_X(self, messages: List[Message]) -> csr_matrix:
         """This method creates a sparse X array that can be used for predicting"""
+        # 当前方法创建了一个可用于预测的稀疏 X 数组
         X = []
         for e in messages:
             # First element is sequence features, second is sentence features
-            sparse_feats = e.get_sparse_features(attribute=TEXT)[1]
+            sparse_feats = e.get_sparse_features(attribute=TEXT)[1]  # 获取features属性夏元组的第一个特征值，是序列特征
             # First element is sequence features, second is sentence features
-            dense_feats = e.get_dense_features(attribute=TEXT)[1]
-            together = hstack(
+            dense_feats = e.get_dense_features(attribute=TEXT)[1]  # 获取features属性夏元组的第二个特征值，是句子特征
+            together = hstack(  # 这部分操作和训练部分是一致的，水平堆叠稀疏矩阵（按列），区别在于不需要标签课，因为这是预测部分
                 [
-                    csr_matrix(sparse_feats.features if sparse_feats else []),
-                    csr_matrix(dense_feats.features if dense_feats else []),
+                    csr_matrix(sparse_feats.features if sparse_feats else []),  # 压缩稀疏行矩阵
+                    csr_matrix(dense_feats.features if dense_feats else []),  # 压缩稀疏行矩阵
                 ]
             )
             X.append(together)
@@ -130,20 +150,29 @@ class LogisticRegressionClassifier(IntentClassifier, GraphComponent):
         """
         This method creates a scikit-learn compatible (X, y)-pair for training
         the logistic regression model.
+        此方法创建一个 scikit-learn 兼容的 (X, y)-pair 用于训练逻辑回归模型。
         """
+        # 训练集
         X = []
+        # 标签
         y = []
         for e in training_data.training_examples:
+            # e为message类型，
+            # e.data={"text":"","intent":""}(Dict),
+            # e.features=[](List),
+            # e.output_properties={'text'}(Set)
+
+            # 判断是否含有意图 intent
             if e.get(INTENT):
-                if e.get("text"):
+                if e.get("text"):  # 判断是否含有文本
                     # First element is sequence features, second is sentence features
-                    sparse_feats = e.get_sparse_features(attribute=TEXT)[1]
+                    sparse_feats = e.get_sparse_features(attribute=TEXT)[1]  # Tuple（sequence features，sentence features）序列特征，
                     # First element is sequence features, second is sentence features
                     dense_feats = e.get_dense_features(attribute=TEXT)[1]
-                    together = hstack(
+                    together = hstack(  # 水平堆叠稀疏矩阵（按列）
                         [
-                            csr_matrix(sparse_feats.features if sparse_feats else []),
-                            csr_matrix(dense_feats.features if dense_feats else []),
+                            csr_matrix(sparse_feats.features if sparse_feats else []),  # 压缩稀疏行矩阵
+                            csr_matrix(dense_feats.features if dense_feats else []),  # 压缩稀疏行矩阵
                         ]
                     )
                     X.append(together)
@@ -151,9 +180,21 @@ class LogisticRegressionClassifier(IntentClassifier, GraphComponent):
         return vstack(X), y
 
     def train(self, training_data: TrainingData) -> Resource:
-        X, y = self._create_training_matrix(training_data)
+        """
+        训练当前节点，并将结果存储到本地
+        :param training_data:
+        :return:
+        """
+        #   (0, 2)	1.0
+        #   (1, 3)	1.0
+        #   (1, 4)	1.0
+        #   (2, 1)	1.0
+        #   (3, 0)	1.0
+        X, y = self._create_training_matrix(training_data)  # X.shape=（total_size， features_size）  y=['greet', 'greet', 'goodbye', 'goodbye']
 
+        # 逻辑回归模型训练
         self.clf.fit(X, y)
+        # 当前节点的字眼处处到可持久化的目录下
         self.persist()
 
         return self._resource
@@ -186,26 +227,65 @@ class LogisticRegressionClassifier(IntentClassifier, GraphComponent):
         return cls(config, execution_context.node_name, model_storage, resource)
 
     def process(self, messages: List[Message]) -> List[Message]:
+        """
+        模型预测部分
+        :param messages: 带预测的数据集，已经分词，并特征化的数据集
+        :return:
+        """
         X = self._create_X(messages)
+        # 把数据剔除标签部分，整理成和训练一样的数据格式
+
+        # TODO：查询sklearn的逻辑回归部分，标签不进行ID化，为什么可以直接预测？
         pred = self.clf.predict(X)
-        probas = self.clf.predict_proba(X)
+        # 当前模型还在内存，直接预测即可，而且结果直接是标签，不需要字典ID查询  ['greet' 'greet' 'goodbye' 'goodbye']
+        probas = self.clf.predict_proba(X)  # probs.shape=（4，2）
         for idx, message in enumerate(messages):
-            intent = {"name": pred[idx], "confidence": probas[idx].max()}
+            intent = {"name": pred[idx], "confidence": probas[idx].max()}  # (Dict)intent={'name': 'greet', 'confidence': 0.58209005055583}
             intents = self.clf.classes_
+            # 所有意图，intents.shape=(2,)  这个属性是逻辑回归的，并不是rasa框架的哈，['goodbye' 'greet']
             intent_info = {
                 k: v
                 for i, (k, v) in enumerate(zip(intents, probas[idx]))
+                # 遍历预测的矩阵当前行的所有意图以及对应的概率
                 if i < LABEL_RANKING_LENGTH
+                # 系统默认设置10，当意图大于10个把后面的删除了，导致的结果是，当意图多于10个，本身预测出的结果有可能无法显示
             }
+            # 这只是一句话的预测结果，包含前LABEL_RANKING_LENGTH个的意图以及概率
             intent_ranking = [
                 {"name": k, "confidence": v} for k, v in intent_info.items()
             ]
+            # 对intent_info增加字典的key值，{"intent_value":"confidence_value",...} 转换成 [{"name": "intent_value", "confidence": "confidence_value"},...]
+
             message.set("intent", intent, add_to_output=True)
+            # (Message)给message增加一对键值对，是存储在data属性下哈，之前的data属性下的intent是字符串，现在类型是字典
             message.set("intent_ranking", intent_ranking, add_to_output=True)
+            # (Message)给message增加一对键值对，是存储在data属性下哈，之前的data属性下的没有intent_ranking，现在类型是列表，表现了当前这句话前十个意图以及概率
         return messages
 
     def persist(self) -> None:
+        """
+        将当前节点存储到本地
+        :return:
+        """
+
+        # self._model_storage.write_to(): 保留给定资源的数据。
         with self._model_storage.write_to(self._resource) as model_dir:
+            """Persists data for a given resource.   
+            self._model_storage.write_to(): 保留给定资源的数据。
+
+            This `Resource` can then be accessed in dependent graph nodes via
+            `model_storage.read_from`.
+            然后可以通过以下方式在相关图节点中访问此“资源”`model_storage.read_from`。
+
+            Args:
+                resource: The resource which should be persisted.
+                resource：应该被持久化的资源。
+
+            Returns:
+                A directory which can be used to persist data for the given `Resource`.
+                可用于为给定“资源”保存数据的目录。
+            """
+            # model_dir: /private/var/folders/z0/7kqx00cx0pq1dyl32g8z02cm0000gn/T/pytest-of-geng/pytest-6/test_sparse_feats_added0/sparse_feat
             dump(self.clf, model_dir / f"{self.name}.joblib")
 
     @classmethod
