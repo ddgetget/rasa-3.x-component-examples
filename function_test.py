@@ -100,8 +100,26 @@ def bpemb_BPEmb_test():
 
     print("Decode byte-pair IDs:", bpemb_zh.decode_ids([25950, 695, 20199]))
 
+
+def JSON_FILE_TEST():
+    """
+    这个数据debug的时候产看是dict格式，但是看了半天也没理解过来，需要复制知道到编辑器，在进行赋值給data才能看到真正的结构，这里的key比较长
+    """
+
+    data={'[{"prev_action": {"action_name": "action_listen"}, "user": {"intent": "goodbye"}}]': 'utter_goodbye',
+     '[{"prev_action": {"action_name": "action_listen"}, "user": {"intent": "goodbye"}}, {"prev_action": {"action_name": "utter_goodbye"}, "user": {"intent": "goodbye"}}]': 'action_listen',
+     '[{"prev_action": {"action_name": "action_listen"}, "user": {"intent": "bot_challenge"}}]': 'utter_iamabot',
+     '[{"prev_action": {"action_name": "action_listen"}, "user": {"intent": "bot_challenge"}}, {"prev_action": {"action_name": "utter_iamabot"}, "user": {"intent": "bot_challenge"}}]': 'action_listen'}
+
+    for key,value in data.items():
+        print("key:",key)
+        print("value:",value)
+        print()
+
+
 if __name__ == '__main__':
     # only_alphanum_parse_test(text="hello world")
     # sklearn_LogisticRegression_test()
     # sklearn_TfidfVectorizer_test()
-    bpemb_BPEmb_test()
+    # bpemb_BPEmb_test()
+    JSON_FILE_TEST()

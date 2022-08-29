@@ -69,6 +69,10 @@ logger = logging.getLogger(__name__)
 
 
 # These are Rasa Open Source default actions and overrule everything at any time.
+# 这些是Rasa开源的默认操作，并在任何时候推翻一切。
+"""
+{'restart': 'action_restart', 'back': 'action_back', 'session_start': 'action_session_start'}
+"""
 DEFAULT_ACTION_MAPPINGS = {
     USER_INTENT_RESTART: ACTION_RESTART_NAME,
     USER_INTENT_BACK: ACTION_BACK_NAME,
@@ -106,6 +110,10 @@ class InvalidRule(RasaException):
 )
 class RulePolicy(MemoizationPolicy):
     """Policy which handles all the rules."""
+    # 处理所有规则的策略。
+    # RASA提供非常丰富的规则，通过规则组合可以形成各种各样的策略。
+    # 诸如RASA 1.x中的Fallback Policy，Two-Stage Fallback Policy，Form Policy都可以通过规则来实现。
+    # 但RASA也提了个醒，不能过度使用Rule Policy，因为当业务复杂到一定程度的时候，规则会变得非常难以维护，尤其当多个规则有冲突的时候。
 
     # rules use explicit json strings
     # 规则使用显式 json 字符串
@@ -171,6 +179,11 @@ class RulePolicy(MemoizationPolicy):
     ) -> None:
         """Initializes the policy."""
         # max history is set to `None` in order to capture any lengths of rule stories
+        # rasa_run的时候仅仅运行当前部分
+        """
+        config={'priority': 4, 'core_fallback_threshold': 0.3, 'core_fallback_action_name': 'action_default_fallback', 'enable_fallback_prediction': True, 'restrict_rules': True, 'check_for_contradictions': True, 'use_nlu_confidence_as_score': False, 'max_history': None}
+        """
+        # TODO： 这个lookup怎么获取到？？？？
         config[POLICY_MAX_HISTORY] = None
 
         super().__init__(
@@ -215,7 +228,7 @@ class RulePolicy(MemoizationPolicy):
 
     def _create_feature_key(self, states: List[State]) -> Optional[Text]:
         new_states: List[State] = []
-        for state in reversed(states):
+        for state in reversed(states):  # 颠倒
             if self._is_rule_snippet_state(state):
                 # remove all states before RULE_SNIPPET_ACTION_NAME
                 break
@@ -230,11 +243,12 @@ class RulePolicy(MemoizationPolicy):
 
     @staticmethod
     def _states_for_unhappy_loop_predictions(states: List[State]) -> List[State]:
-        """Modifies the states to create feature keys for loop unhappy path conditions.
+        """Modifies the states to create feature keys for loop unhappy path conditions.  修改状态以创建循环不满意路径条件的特性键。
 
         Args:
             states: a representation of a tracker
                 as a list of dictionaries containing features
+            状态:跟踪器的表示作为包含特性的字典列表
 
         Returns:
             modified states
@@ -307,6 +321,7 @@ class RulePolicy(MemoizationPolicy):
     def _check_rule_restriction(
         self, rule_trackers: List[TrackerWithCachedStates]
     ) -> None:
+        # 检查规则限制
         rules_exceeding_max_user_turns = []
         for tracker in rule_trackers:
             number_of_user_uttered = sum(
@@ -363,14 +378,14 @@ class RulePolicy(MemoizationPolicy):
                 f"add 'wait_for_user_input: false' after this action."
             )
         if action_name and fingerprint_active_loops:
-            # substitute `SHOULD_NOT_BE_SET` with `null` so that users
-            # know what to put in their rules
+            # substitute `SHOULD_NOT_BE_SET` with `null` so that users know what to put in their rules
+            # 将' SHOULD_NOT_BE_SET '替换为' null '，这样用户就知道该在他们的规则中放入什么
             fingerprint_active_loops = set(
                 "null" if active_loop == SHOULD_NOT_BE_SET else active_loop
                 for active_loop in fingerprint_active_loops
             )
-            # add action_name to active loop so that users
-            # know what to put in their rules
+            # add action_name to active loop so that users know what to put in their rules
+            # 将action_name添加到活动循环中，以便用户知道在规则中添加什么
             fingerprint_active_loops.add(action_name)
 
             error_messages.append(
@@ -479,8 +494,8 @@ class RulePolicy(MemoizationPolicy):
     ) -> Tuple[Optional[Text], Optional[Text]]:
         prediction, prediction_source = self._predict(tracker, domain)
         probabilities = prediction.probabilities
-        # do not raise an error if RulePolicy didn't predict anything for stories;
-        # however for rules RulePolicy should always predict an action
+        # do not raise an error if RulePolicy didn't predict anything for stories; 如果RulePolicy没有预测任何内容，不会引发错误
+        # however for rules RulePolicy should always predict an action  但是对于规则，RulePolicy应该总是预测一个操作
         predicted_action_name = None
         if (
             probabilities != self._default_predictions(domain)
@@ -520,8 +535,8 @@ class RulePolicy(MemoizationPolicy):
         gold_action_name: Optional[Text],
         prediction_source: Text,
     ) -> None:
-        # we need to remember which action should be predicted by the rule
-        # in order to correctly output the names of the contradicting rules
+        # we need to remember which action should be predicted by the rule in order to correctly output the names of the contradicting rules
+        # 为了正确地输出矛盾规则的名称，我们需要记住规则应该预测哪些操作
         rule_name = tracker.sender_id
 
         if prediction_source is not None and (
@@ -809,6 +824,7 @@ class RulePolicy(MemoizationPolicy):
         **kwargs: Any,
     ) -> Resource:
         """Trains the policy on given training trackers.
+        预测的是偶
 
         Args:
             training_trackers: The list of the trackers.
@@ -888,7 +904,7 @@ class RulePolicy(MemoizationPolicy):
     def _is_rule_applicable(
         self, rule_key: Text, turn_index: int, conversation_state: State
     ) -> bool:
-        """Checks if rule is satisfied with current state at turn.
+        """Checks if rule is satisfied with current state at turn.检查规则是否满足当前状态。
 
         Args:
             rule_key: the textual representation of learned rule
@@ -1013,11 +1029,11 @@ class RulePolicy(MemoizationPolicy):
         domain: Domain,
         use_text_for_last_user_input: bool,
     ) -> Tuple[Optional[Text], Optional[Text], bool]:
-        """Predicts the next action based on the memoized rules.
+        """Predicts the next action based on the memoized rules.  根据记忆的规则预测下一个操作。跟实体链接差不多，就是查数据库
 
         Args:
             tracker: The current conversation tracker.
-            domain: The domain of the current model.
+            domain: The domain of the current model.  # 19 actions, 12 intents, 6 responses, 1 slots, 0 entities, 0 forms
             use_text_for_last_user_input: `True` if text of last user message
                 should be used for the prediction. `False` if intent should be used.
 
@@ -1034,14 +1050,14 @@ class RulePolicy(MemoizationPolicy):
             # because we've otherwise already decided whether to use
             # the text or the intent
             return None, None, False
-
+        # [{}, {'user': {'intent': 'bot_challenge'}, 'prev_action': {'action_name': 'action_listen'}}]
         states = self._prediction_states(
             tracker,
             domain,
             use_text_for_last_user_input,
             rule_only_data=self._get_rule_only_data(),
         )
-
+        # '[state 1] user intent: bot_challenge | previous action name: action_listen'
         current_states = self.format_tracker_states(states)
         logger.debug(f"Current tracker state:{current_states}")
 
@@ -1050,16 +1066,16 @@ class RulePolicy(MemoizationPolicy):
         # is returning after an unhappy path. For example, the `FormAction` uses this
         # to skip the validation of slots for its first execution after an unhappy path.
         returning_from_unhappy_path = False
-
+        # 根据当前状态，去查找表里面查询可能的action对应的key, 其实这里是吧lookup的字典表反转了，所以对应的key是action，value对应states集合里面的值，进而去匹配，这里匹配的时候有个过滤操作，检查intent和对应的action是否在rule.yml文件内
         rule_keys = self._get_possible_keys(self.lookup[RULES], states)
         predicted_action_name = None
         best_rule_key = ""
-        if rule_keys:
-            # if there are several rules,
-            # it should mean that some rule is a subset of another rule
-            # therefore we pick a rule of maximum length
+        if rule_keys:  # （SET）{'[{"prev_action": {"action_name": "action_listen"}, "user": {"intent": "bot_challenge"}}]'}  集合里面是字符串哈
+            # if there are several rules,  如果有几个规则
+            # it should mean that some rule is a subset of another rule  它应该意味着某个规则是另一个规则的子集
+            # therefore we pick a rule of maximum length  因此，我们选择最大长度规则
             best_rule_key = max(rule_keys, key=len)
-            predicted_action_name = self.lookup[RULES].get(best_rule_key)
+            predicted_action_name = self.lookup[RULES].get(best_rule_key)  # 通过这个规则去查询对应的action
 
         active_loop_name = tracker.active_loop_name
         if active_loop_name:
@@ -1105,7 +1121,7 @@ class RulePolicy(MemoizationPolicy):
                 )
                 returning_from_unhappy_path = True
 
-        if predicted_action_name is not None:
+        if predicted_action_name is not None:  # 如果没有预测到任何action的情况
             logger.debug(
                 f"There is a rule for the next action '{predicted_action_name}'."
             )
@@ -1199,25 +1215,27 @@ class RulePolicy(MemoizationPolicy):
 
         (
             rules_action_name_from_intent,
-            # we want to remember the source even if rules didn't predict any action
+            # we want to remember the source even if rules didn't predict any action  # 我们希望记住来源，即使规则不能预测任何行动
             prediction_source_from_intent,
             returning_from_unhappy_path_from_intent,
         ) = self._find_action_from_rules(
             tracker, domain, use_text_for_last_user_input=False
         )
         if rules_action_name_from_intent:
+            # 当前方法来自memoization查询每一种actions的概略
             probabilities = self._prediction_result(
                 rules_action_name_from_intent, tracker, domain
             )
         else:
+            # 如果没有任何根据意图获取的action，那么直接默认拿一组，
             probabilities = self._default_predictions(domain)
 
         return (
             self._rule_prediction(
-                probabilities,
-                prediction_source_from_intent,
+                probabilities,  # 每个action的概略
+                prediction_source_from_intent,  # 预测action的依据(intent)--'[{"prev_action": {"action_name": "action_listen"}, "user": {"intent": "bot_challenge"}}]'  这个是查找表里面来的
                 returning_from_unhappy_path=(
-                    # returning_from_unhappy_path is a negative condition,
+                    # returning_from_unhappy_path is a negative condition,  Returning_from_unhappy_path是一个负面条件
                     # so `or` should be applied
                     returning_from_unhappy_path_from_text
                     or returning_from_unhappy_path_from_intent
@@ -1249,8 +1267,8 @@ class RulePolicy(MemoizationPolicy):
             ),
         )
 
-    def _default_predictions(self, domain: Domain) -> List[float]:
-        result = super()._default_predictions(domain)
+    def _default_predictions(self, domain: Domain) -> List[float]:  # 默认的action预测，本案例中action的长度是19个
+        result = super()._default_predictions(domain)   # 初始化一个列表为0的，长度为action长度的列表
 
         if self._enable_fallback_prediction:
             result[domain.index_for_action(self._fallback_action_name)] = self.config[
@@ -1275,7 +1293,7 @@ class RulePolicy(MemoizationPolicy):
         return "rule_policy.json"
 
     def _get_rule_only_data(self) -> Dict[Text, Any]:
-        """Gets the slots and loops that are used only in rule data.
+        """Gets the slots and loops that are used only in rule data.  获取仅在规则数据中使用的槽和循环。
 
         Returns:
             Slots and loops that are used only in rule data.

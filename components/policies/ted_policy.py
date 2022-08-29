@@ -178,19 +178,21 @@ class TEDPolicy(Policy):
     @staticmethod
     def get_default_config() -> Dict[Text, Any]:
         """Returns the default config (see parent class for full docstring)."""
+        # 返回默认配置(完整的文档字符串请参阅父类)
         # please make sure to update the docs when changing a default parameter
+        # 当更改默认参数时，请确保更新文档
         return {
             # ## Architecture of the used neural network
             # Hidden layer sizes for layers before the embedding layers for user message
             # and labels.
             # The number of hidden layers is equal to the length of the corresponding
-            # list.
+            # list.  在用户消息和标签的嵌入层之前，层的隐藏层大小
             HIDDEN_LAYERS_SIZES: {
                 TEXT: [],
                 ACTION_TEXT: [],
                 f"{LABEL}_{ACTION_TEXT}": [],
             },
-            # Dense dimension to use for sparse features.
+            # Dense dimension to use for sparse features.  密集维度用于稀疏特征。
             DENSE_DIMENSION: {
                 TEXT: 128,
                 ACTION_TEXT: 128,
@@ -202,7 +204,7 @@ class TEDPolicy(Policy):
                 SLOTS: 20,
                 ACTIVE_LOOP: 20,
             },
-            # Default dimension to use for concatenating sequence and sentence features.
+            # Default dimension to use for concatenating sequence and sentence features.  用于连接序列和句子特征的默认维度。
             CONCAT_DIMENSION: {
                 TEXT: 128,
                 ACTION_TEXT: 128,
@@ -218,20 +220,20 @@ class TEDPolicy(Policy):
                 f"{LABEL}_{ACTION_TEXT}": 128,
                 DIALOGUE: 128,
             },
-            # Number of layers in transformer encoders
+            # Number of layers in transformer encoders  # transformer变换器的层数
             NUM_TRANSFORMER_LAYERS: {
                 TEXT: 1,
                 ACTION_TEXT: 1,
                 f"{LABEL}_{ACTION_TEXT}": 1,
                 DIALOGUE: 1,
             },
-            # Number of attention heads in transformer
+            # Number of attention heads in transformer  # transformer的 注意力头个数
             NUM_HEADS: 4,
-            # If 'True' use key relative embeddings in attention
+            # If 'True' use key relative embeddings in attention  # 如果key相关的注意力的embedding，则返回TRUE
             KEY_RELATIVE_ATTENTION: False,
-            # If 'True' use value relative embeddings in attention
+            # If 'True' use value relative embeddings in attention  # 如果value相关的注意力的embedding，则返回TRUE
             VALUE_RELATIVE_ATTENTION: False,
-            # Max position for relative embeddings. Only in effect if key- or value
+            # Max position for relative embeddings. Only in effect if key- or value  相对嵌入的最大位置。仅在键或值时有效
             # relative
             # attention are turned on
             MAX_RELATIVE_POSITION: 5,
@@ -368,6 +370,12 @@ class TEDPolicy(Policy):
             entity_tag_specs: Optional[List[EntityTagSpec]] = None,
     ) -> None:
         """Declares instance variables with default values."""
+        # TED Policy全称是Transformer Embedding Dialogue Policy，是Rasa对话管理中用于选择助手下一步动作的一种机器学习对话策略。
+        # 每次对话时，TED策略都会将三条信息作为输入：
+        #
+        # 用户的消息
+        # 之前预测的系统动作
+        # 保存到对话助手内存中作为槽位的所有值
         super().__init__(
             config, model_storage, resource, execution_context, featurizer=featurizer
         )
@@ -381,8 +389,8 @@ class TEDPolicy(Policy):
         self._entity_tag_specs = entity_tag_specs
 
         self.fake_features = fake_features or defaultdict(list)
-        # TED is only e2e if only text is present in fake features, which represent
-        # all possible input features for current version of this trained ted
+        # TED is only e2e if only text is present in fake features, which represent all possible input features for current version of this trained ted
+        # 如果只有文本存在于伪特征中，TED就是e2e，伪特征代表了这个训练过的TED当前版本的所有可能的输入特征
         self.only_e2e = TEXT in self.fake_features and INTENT not in self.fake_features
 
         self._label_data: Optional[RasaModelData] = None
@@ -411,7 +419,7 @@ class TEDPolicy(Policy):
         self._auto_update_configuration()
 
     def _auto_update_configuration(self) -> None:
-        """Takes care of deprecations and compatibility of parameters."""
+        """Takes care of deprecations and compatibility of parameters."""  # 处理参数的弃用和兼容性
         self.config = rasa.utils.train_utils.update_confidence_type(self.config)
         rasa.utils.train_utils.validate_configuration_settings(self.config)
         self.config = rasa.utils.train_utils.update_similarity_type(self.config)
