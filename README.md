@@ -152,6 +152,25 @@ class GraphComponent(ABC):
 2022-08-24 12:00:04 INFO     rasa.engine.training.hooks  - Finished training component 'TEDPolicy'.
 ```
 
+# 策略组件 
+
+## MemoizationPolicy
+memoization实际上就是记录所有的状态，和状态对应的action。将这些数据持久化之后等待预测时使用。 
+
+预测时则是读出这些数据并查询当前状态对应的action
+## RulePolicy
+处理所有规则的策略。
+
+RASA提供非常丰富的规则，通过规则组合可以形成各种各样的策略。
+
+诸如RASA 1.x中的Fallback Policy，Two-Stage Fallback Policy，Form Policy都可以通过规则来实现。
+
+但RASA也提了个醒，不能过度使用Rule Policy，因为当业务复杂到一定程度的时候，规则会变得非常难以维护，尤其当多个规则有冲突的时候。
+
+## TEDPolicy
+transformer embedding 对话(TED)策略。
+
+https://arxiv.org/abs/1910.00486
 
 # 参考链接
 1. [github-rasa-3.x-component-examples](https://github.com/RasaHQ/rasa-3.x-component-examples)

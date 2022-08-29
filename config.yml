@@ -22,7 +22,12 @@ pipeline:
   - name: components.nlu_clf.LogisticRegressionClassifier
     max_iter: 2000
   - name: components.nlu_ent.CapitalisedEntityExtractor
-    entity_name: some_random_entity_name
+    entity_name: CapitalisedEntityExtractor
+  - name: DIETClassifier
+    epochs: 100
+    constrain_similarities: true
+  - name: components.nlu_ent.CapitalisedEntityExtractor
+    entity_name: LongGeng
 
 policies:
   - name: components.policies.memoization.MemoizationPolicy
